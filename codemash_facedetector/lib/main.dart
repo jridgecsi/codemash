@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
+import 'package:firebase_ml_vision/firebase_ml_vision.dart';
 
 // main method
 void main() => runApp(MyApp());
@@ -34,6 +35,14 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   File _imageFile;
   Size _imageSize;
+  dynamic _scanResults;
+
+  // setup the face detector instance for FirebaseVision with options
+  final FaceDetector _faceDetector = FirebaseVision.instance.faceDetector(
+      FaceDetectorOptions(
+          mode: FaceDetectorMode.fast,
+          enableLandmarks: true,
+          enableContours: false));
 
 /* _getAndScanImage method */
   Future<void> _getAndScanImage({bool selectedFromCamera}) async {
@@ -49,11 +58,30 @@ class _MyHomePageState extends State<MyHomePage> {
         maxHeight: 1000);
 
     if (imageFile != null) {
-      // need to do something with the selected image file
+      // scan the image file with the face detector
+      _scanImage(imageFile);
     }
 
     setState(() {
       _imageFile = imageFile;
+    });
+  }
+
+/* _scanImage method */
+  Future<void> _scanImage(File imageFile) async {
+    print('_scanImage method called');
+    setState(() {
+      _scanResults = null;
+    });
+
+    final FirebaseVisionImage visionImage =
+        FirebaseVisionImage.fromFile(imageFile);
+
+    dynamic results;
+    results = await _faceDetector.processImage(visionImage);
+
+    setState(() {
+      _scanResults = results;
     });
   }
 
@@ -98,42 +126,49 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: _imageFile == null
-          ? Center(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                  Container(
-                      padding: EdgeInsets.all(16),
-                      color: Colors.blue,
-                      constraints: BoxConstraints.expand(
-                          width: MediaQuery.of(context).size.width,
-                          height: 225),
-                      child: Column(children: <Widget>[
-                        Text('Detect Faces',
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 32)),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(0, 20, 0, 0),
-                        ),
-                        RaisedButton(
-                            child: Text("Detect Faces from Gallery Image",
-                                style: TextStyle(fontSize: 20)),
-                            onPressed: () {
-                              _getAndScanImage(selectedFromCamera: false);
-                            }),
-                        RaisedButton(
-                            child: Text("Detect Faces from Camera",
-                                style: TextStyle(fontSize: 20)),
-                            onPressed: () {
-                              _getAndScanImage(selectedFromCamera: true);
-                            })
-                      ]))
-                ]))
-          : _buildImage(),
-    );
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: _imageFile == null
+            ? Center(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                    Container(
+                        padding: EdgeInsets.all(16),
+                        color: Colors.blue,
+                        constraints: BoxConstraints.expand(
+                            width: MediaQuery.of(context).size.width,
+                            height: 225),
+                        child: Column(children: <Widget>[
+                          Text('Detect Faces',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 32)),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(0, 20, 0, 0),
+                          ),
+                          RaisedButton(
+                              child: Text("Detect Faces from Gallery Image",
+                                  style: TextStyle(fontSize: 20)),
+                              onPressed: () {
+                                _getAndScanImage(selectedFromCamera: false);
+                              }),
+                          RaisedButton(
+                              child: Text("Detect Faces from Camera",
+                                  style: TextStyle(fontSize: 20)),
+                              onPressed: () {
+                                _getAndScanImage(selectedFromCamera: true);
+                              })
+                        ]))
+                  ]))
+            : _buildImage(),
+      );
+  }
+
+   // clean up
+  @override
+  void dispose() {
+    _faceDetector.close();
+    super.dispose();
   }
 }
