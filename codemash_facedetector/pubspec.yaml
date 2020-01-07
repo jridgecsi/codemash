@@ -39,6 +39,10 @@ dependencies:
   # https://pub.dev/packages/firebase_ml_vision
   firebase_ml_vision: 0.9.3
 
+  image_gallery_saver: ^1.2.2
+  
+  screenshot: ^0.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

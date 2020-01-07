@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_ml_vision/firebase_ml_vision.dart';
 import 'package:image_picker/image_picker.dart';
+import 'detector_painters.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
-import 'package:firebase_ml_vision/firebase_ml_vision.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:screenshot/screenshot.dart';
 
 // main method
 void main() => runApp(MyApp());
@@ -44,6 +47,9 @@ class _MyHomePageState extends State<MyHomePage> {
           enableLandmarks: true,
           enableContours: false));
 
+  // declare the screenshot controller to grab a screenshot of the screen when saving the image
+  ScreenshotController screenshotController = ScreenshotController();
+
 /* _getAndScanImage method */
   Future<void> _getAndScanImage({bool selectedFromCamera}) async {
     print('_getAndScanImage method called');
@@ -58,12 +64,33 @@ class _MyHomePageState extends State<MyHomePage> {
         maxHeight: 1000);
 
     if (imageFile != null) {
-      // scan the image file with the face detector
+      _getImageSize(imageFile);
       _scanImage(imageFile);
     }
 
     setState(() {
       _imageFile = imageFile;
+    });
+  }
+
+/* _getImageSize method */
+  Future<void> _getImageSize(File imageFile) async {
+    print('_getImageSize method called');
+    final Completer<Size> completer = Completer<Size>();
+
+    final Image image = Image.file(imageFile);
+    image.image.resolve(const ImageConfiguration()).addListener(
+      ImageStreamListener((ImageInfo info, bool _) {
+        completer.complete(Size(
+          info.image.width.toDouble(),
+          info.image.height.toDouble(),
+        ));
+      }),
+    );
+
+    final Size imageSize = await completer.future;
+    setState(() {
+      _imageSize = imageSize;
     });
   }
 
@@ -85,12 +112,25 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+/* _buildResults method */
+  CustomPaint _buildResults(Size imageSize, dynamic results) {
+    print('_buildResults method called');
+    CustomPainter painter;
+    painter = FaceDetectorPainter(_imageSize, results);
+
+    return CustomPaint(
+      painter: painter,
+    );
+  }
+
 /* _buildImage() method - build the image to display in body of the app */
   Widget _buildImage() {
     print('_buildImage method called');
     return Stack(children: <Widget>[
       Positioned.fill(
-          child: Container(
+          child: Screenshot(
+        controller: screenshotController,
+        child: Container(
         constraints: BoxConstraints.expand(),
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -98,7 +138,10 @@ class _MyHomePageState extends State<MyHomePage> {
             fit: BoxFit.fitWidth,
           ),
         ),
-      )),
+        child: _imageSize == null || _scanResults == null
+            ? const Center(child: CircularProgressIndicator())
+            : _buildResults(_imageSize, _scanResults),
+      ))),
       Positioned(
           bottom: 25,
           width: MediaQuery.of(context).size.width,
@@ -115,6 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   onPressed: () {
                     setState(() {
                       _imageFile = null;
+                      _scanResults = null;
                     });
                   },
                 )
@@ -148,12 +192,6 @@ class _MyHomePageState extends State<MyHomePage> {
                             padding: EdgeInsets.fromLTRB(0, 20, 0, 0),
                           ),
                           RaisedButton(
-                              child: Text("Detect Faces from Gallery Image",
-                                  style: TextStyle(fontSize: 20)),
-                              onPressed: () {
-                                _getAndScanImage(selectedFromCamera: false);
-                              }),
-                          RaisedButton(
                               child: Text("Detect Faces from Camera",
                                   style: TextStyle(fontSize: 20)),
                               onPressed: () {
@@ -165,7 +203,7 @@ class _MyHomePageState extends State<MyHomePage> {
       );
   }
 
-   // clean up
+  // clean up
   @override
   void dispose() {
     _faceDetector.close();
