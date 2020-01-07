@@ -19,7 +19,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
+
   # image picker for selecting an image from the gallery or camera
   # https://pub.dev/packages/image_picker
   image_picker: ^0.6.1+11
@@ -31,6 +31,13 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.2
+
+  # firebase core is needed for any Firebase functionality to work
+  firebase_core: ^0.4.0
+  
+  # firebase ml vision is needed for machine learning using Firebase 
+  # https://pub.dev/packages/firebase_ml_vision
+  firebase_ml_vision: 0.9.3
 
 dev_dependencies:
   flutter_test:
